@@ -2,9 +2,7 @@
 title: "Time Series Analysis of Earthquake Data"
 # author: "Zy"
 date: "2023-05-02"
-output:
-  html_document:
-keep_md: true
+output: github_document
 monofont: "Roboto Mono"
 header-includes:
   - \usepackage{fontspec}
