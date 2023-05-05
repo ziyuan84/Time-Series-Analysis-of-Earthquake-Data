@@ -1,0 +1,755 @@
+---
+title: "Time Series Analysis of Earthquake Data"
+# author: "Zy"
+date: "2023-05-02"
+output:
+  html_document:
+keep_md: true
+monofont: "Roboto Mono"
+header-includes:
+  - \usepackage{fontspec}
+  - \newfontfamily\urlfont{Roboto Mono}
+---
+
+<style type="text/css">
+  body{
+  font-size: 10pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+\urlstyle{tt}
+
+### Abstract
+
+In this project, we develop and compare time series models for the annual number of earthquakes of magnitude greater than 7 on the Richter scale for 100 years, from 1918 to 2020. The first 100 observations will be used as the training set and the last 3 observations will be used to assess the predictive accuracy of the fitted models. Using the results of our models, we address the following questions: is the time series weakly or strongly stationary; does the time series have a trend or periodic pattern; under the assumption of an autoregressive (AR) model or a finite mixture of AR models, what are the 3-step ahead predictions of the time series?    
+
+### Introduction
+
+Earthquake prediction is presently an inexact science. Even with an extensive understanding of
+how earthquakes occur, it is difficult to translate early warning signs into a prediction of the time, location and magnitude of an impending earthquake. Scientists have developed sophisticated mathematical models of tectonic plate movements and more recently have tried applying machine learning techniques to these models to make predictions, but with a lack of extensive data on early warning signs, the predictive capabilities of the models remain fairly weak. The United States Geological Survey (USGS) FAQ page continues to assert that "neither the USGS nor any other scientists have ever predicted a major earthquake", and that "[they] do not know how, and [they] do not expect to know how any time in the foreseeable future". In this project, we approach the problem of earthquake prediction from a purely data analytic point of view. Our main goal is not to predict individual occurrences of earthquakes, but rather try to model the annual number of major earthquakes (earthquakes of magnitude greater than 7 on the Richter scale). Using data of the annual number of earthquakes of magnitude greater than 7 on the Richter scale for 100 years, from 1918 to 2020, we build and compare two time series models to fit the data: first, a single AR model; second, a mixture autoregressive (MAR) model. 
+
+
+### Data
+
+We first plot the training set, which consists of 100 observations. Each observation is the annual number of earthquakes  of magnitude greater than 7 on the Richter scale. The mean of the data is 12.77 and the variance is 16.62333. We observe a quasi-periodic pattern in the data but no discernible trend. Furthermore, there is some evidence of non-stationarity of the time series in the autocorrelation and partial-autocorrelation function plots. The plots of the autocorrelation and partial-autocorrelation functions do not display any particular pattern and do not appear to decrease to zero with increasing lags, supporting the view that the time series is not weakly stationary.   
+
+```{r include=FALSE}
+## read data, you need to make sure the data file is in your current working directory 
+setwd("C:/Users/Owner")
+earthquakes.dat <- read.delim("earthquakes.txt")
+earthquakes.dat$Quakes=as.numeric(earthquakes.dat$Quakes)
+library(mvtnorm)
+library(MCMCpack)
+y.dat=earthquakes.dat$Quakes[1:100] ## this is the training data
+y.new=earthquakes.dat$Quakes[101:103] ## this is the test data
+n.all = length(y.dat)
+```
+
+```{r message=FALSE, echo=FALSE, fig.asp=0.3}
+par(mfrow=c(1,3))
+plot(y.dat,type='l',xlab='Year',ylab='Number of Earthquakes')
+acf(y.dat, main="",xlab='Lag')
+pacf(y.dat,main="",xlab='Lag')
+#mean(y.dat)
+#var(y.dat)
+```
+
+### AR Model
+
+We begin by fitting an AR model to the data. In order to determine the best order $p$ for the AR model, we estimate the Akaike Information Criterion (AIC) and Bayes information criterion (BIC) for values of $p$ ranging from $1$ to $15$, and pick a value of $p$ which gives small AIC and BIC values. 
+
+```{r message=FALSE, echo=FALSE, fig.asp=0.45}
+p.star=15
+Y=matrix(y.dat[(p.star+1):n.all],ncol=1)
+sample.all=matrix(y.dat,ncol=1)
+n=length(Y)
+p=seq(1,p.star,by=1)
+
+
+design.mtx=function(p_cur){
+  Fmtx=matrix(0,ncol=n,nrow=p_cur)
+  for (i in 1:p_cur) {
+    start.y=p.star+1-i
+    end.y=start.y+n-1
+    Fmtx[i,]=sample.all[start.y:end.y,1]
+  }
+  return(Fmtx)
+}
+
+criteria.ar=function(p_cur){
+  Fmtx=design.mtx(p_cur)
+  beta.hat=chol2inv(chol(Fmtx%*%t(Fmtx)))%*%Fmtx%*%Y
+  R=t(Y-t(Fmtx)%*%beta.hat)%*%(Y-t(Fmtx)%*%beta.hat)
+  sp.square=R/(n-p_cur)
+  aic=2*p_cur+n*log(sp.square)
+  bic=log(n)*p_cur+n*log(sp.square)
+  result=c(aic,bic)
+  return(result)
+}
+
+
+criteria=sapply(p,criteria.ar)
+
+
+plot(p,criteria[1,],type='p',pch='a',col='red',xlab='AR order p',ylab='Criterion',main='',
+     ylim=c(min(criteria)-10,max(criteria)+10))
+points(p,criteria[2,],pch='b',col='blue')
+```
+
+The smallest AIC value is 251.4111, attained at $p=4$, while the smallest BIC value is 259.1044, attained at $p=3$. Since the AIC value of 251.7765 at $p=3$ is rather close to the minimum AIC value, we choose $p=3$ as the order of our AR model. The full hierarchical specification of the AR(3) model is as follows: $\boldsymbol{y} \sim N(\boldsymbol{F}^T \boldsymbol{\phi}, \nu \boldsymbol{I}_n),~ \boldsymbol{\phi} \sim N(\boldsymbol{m}_0,\nu \boldsymbol{C}_0),~ \nu \sim IG\left(\frac{n_0}{2},\frac{d_0}{2}\right)$. Here the response vector $\boldsymbol{y}$ is $\begin{bmatrix} y_4 & y_5 & \cdots & y_{100}  \end{bmatrix}^T$, $n = 97$, $\boldsymbol{y} \in \mathbb{R}^n$, $F = \begin{bmatrix}  o_3 & \cdots & o_{99} \\ o_2 & \cdots & o_{98} \\ o_1 & \cdots & o_{97} \end{bmatrix}$, where the 100 observations are $o_1,\ldots,o_{100}$. Furthermore, we choose  the hyperparameters $\boldsymbol{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T$, $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. To see that the posterior distributions of $\boldsymbol{\phi}$ and $\nu$ are quite robust to small changes in the hyperparameters, we calculate the posterior mean estimate of $\phi$ for 3 different sets of hyperparameters: (1) $\boldsymbol{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T$, $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$; (2) $\boldsymbol{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T$, $C_0 = 5I_3$ and $n_0 = 0.1$, $d_0 = 0.2$; (3) $\boldsymbol{m}_0 = \begin{bmatrix} 1 & 1 & 1 \end{bmatrix}^T$, $C_0 = 2I_3$ and $n_0 = 0.1$, $d_0 = 0.2$.   
+
+```{r message=FALSE, echo=FALSE}
+library(colorRamps)
+library(leaflet)
+library(fields)
+
+## generate grid
+coordinates_1=seq(-3,3,length.out = 100)
+coordinates_2=seq(-3,3,length.out = 100)
+coordinates_3=seq(-3,3,length.out = 100)
+coordinates=expand.grid(coordinates_1,coordinates_2,coordinates_3)
+coordinates=as.matrix(coordinates)
+
+N=100
+p=3
+Y=matrix(y.dat[(p+1):n.all],ncol=1)
+Fmtx=matrix(c(y.dat[p:(n.all-1)],y.dat[(p-1):(n.all-2)],y.dat[(p-2):(n.all-3)]),nrow=p,byrow=TRUE)
+n=length(Y)
+
+## function to compute parameters for the posterior distribution of phi_1 and phi_2
+## the posterior distribution of phi_1 and phi_2 is a multivariate t distribution
+
+cal_parameters=function(m0=matrix(c(0,0,0),nrow=p),C0=10*diag(p),n0,d0){
+  e=Y-t(Fmtx)%*%m0
+  Q=t(Fmtx)%*%C0%*%Fmtx+diag(n)
+  Q.inv=chol2inv(chol(Q))  ## similar as solve, but more robust
+  A=C0%*%Fmtx%*%Q.inv
+  m=m0+A%*%e
+  C=C0-A%*%Q%*%t(A)
+  n.star=n+n0
+  d.star=t(Y-t(Fmtx)%*%m0)%*%Q.inv%*%(Y-t(Fmtx)%*%m0)+d0
+  
+  params=list()
+  params[[1]]=n.star
+  params[[2]]=d.star
+  params[[3]]=m
+  params[[4]]=C
+  params[[5]]=(d.star/2)/(n.star/2-1)
+  
+  return(params)
+}
+
+
+## evaluate density at the grid points
+get_density=function(param){
+  location=param[[3]]
+  scale=as.numeric(param[[2]]/param[[1]])*param[[4]]
+  density=rep(0,N^2)
+  
+  for (i in 1:N^2) {
+    xi=coordinates[i,]
+    density[i]=dmvt(xi,delta=location,sigma=scale,df=param[[1]])
+  }
+  
+  density_expand=matrix(density,nrow=N)
+  return(density_expand)
+}
+
+## calculate density for three sets of hyperparameters
+params1=cal_parameters(n0=0.02,d0=0.02)
+params2=cal_parameters(C0=5*diag(p),n0=0.01,d0=0.05)
+params3=cal_parameters(m0=matrix(c(1,1,1),nrow=p),C0=2*diag(p),n0=0.01,d0=0.06)
+
+col.list=matlab.like2(N)
+Z=list(get_density(params1),get_density(params2),get_density(params3))
+#params1[[5]]
+#params2[[5]]
+#params3[[5]]
+
+#op <- par(mfrow = c(1,3),
+#          oma = c(5,4,0,0) + 0.1,
+#          mar = c(4,4,0,0) + 0.2)
+#image(coordinates_1,coordinates_2,coordinates_3,Z[[1]],col=col.list,
+#      zlim=range(unlist(Z)),xlab=expression(phi[1]),ylab=expression(phi[2]))
+#image(coordinates_1,coordinates_2,coordinates_3,Z[[2]],col=col.list,
+#      zlim=range(unlist(Z)),xlab=expression(phi[1]),ylab=expression(phi[2]))
+#image(coordinates_1,coordinates_2,coordinates_3,Z[[3]],col=col.list,
+#      zlim=range(unlist(Z)),xlab=expression(phi[1]),ylab=expression(phi[2]))
+```
+
+The posterior mean estimates of $\boldsymbol{\phi} = \begin{bmatrix} \phi_1 & \phi_2 & \phi_3\end{bmatrix}^T$ and $\nu$ for the 3 parameter sets are: (1) $\boldsymbol{\phi} = \begin{bmatrix} 0.3332798 &  0.2059251 & 0.4428161\end{bmatrix}^T$,  $\nu = 17.14287$;
+(2) $\boldsymbol{\phi} = \begin{bmatrix} 0.3332784 & 0.2059347 & 0.4428060\end{bmatrix}^T$, $\nu = 17.14536$; (3) $\boldsymbol{\phi} = \begin{bmatrix} 0.3332819 & 0.2059726 & 0.4427885\end{bmatrix}^T$, $\nu = 17.15202$. Hence the posterior distributions of $\boldsymbol{\phi}$ and $\nu$ are quite robust with respect to the choice of hyperparameters.
+
+Next, we draw 5000 samples of $(\phi_1,\phi_2,\phi_3,\nu)$ from their marginal posterior distributions and plot them. As discussed earlier, we will use the hyperparameters $\boldsymbol{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T$, $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. For each sample $(\boldsymbol{\phi},\nu)$ drawn, we compute $\boldsymbol{\mu} = F^T\boldsymbol{\phi}$ as an estimate for the mean of $\boldsymbol{y}$, and for each $i \in \{4,\ldots,100\}$, we draw a sample of $y_i$ from the distribution $N(\boldsymbol{\mu}[i-3], \nu)$. For each $i$, we take the mean of all $y_i$'s so obtained over the 5000 samples. The 95% credible interval for each point $y_i$ is also computed.     
+
+```{r message=FALSE, echo=FALSE, include=FALSE}
+
+n.sample=5000
+
+nu.sample=rep(0,n.sample)
+phi.sample=matrix(0,nrow=n.sample,ncol=p)
+
+n.star = params1[[1]]
+d.star = as.numeric(params1[[2]])
+m = params1[[3]]
+C = params1[[4]]
+
+
+for (i in 1:n.sample) {
+  set.seed(i)
+  nu.new=1/rgamma(1,shape=n.star/2,rate=d.star/2)
+  nu.sample[i]=nu.new
+  phi.new=rmvnorm(1,mean=m,sigma=nu.new*C)
+  phi.sample[i,]=phi.new
+}
+# phi.sample[3000,]
+```
+
+```{r echo=FALSE, fig.asp=0.3}
+par(mfrow=c(1,4))
+hist(phi.sample[,1],freq=FALSE,xlab=expression(phi[1]),main="",ylim=c(0,5))
+lines(density(phi.sample[,1]),type='l',col='red')
+hist(phi.sample[,2],freq=FALSE,xlab=expression(phi[2]),main="",ylim=c(0,5))
+lines(density(phi.sample[,2]),type='l',col='red')
+hist(phi.sample[,3],freq=FALSE,xlab=expression(phi[3]),main="",ylim=c(0,5))
+lines(density(phi.sample[,3]),type='l',col='red')
+hist(nu.sample,freq=FALSE,xlab=expression(nu),main="", ylim=c(0,0.2))
+lines(density(nu.sample),type='l',col='red')
+```
+
+```{r echo=FALSE, fig.asp=0.4}
+## get in sample prediction
+post.pred.y=function(s){
+  
+  beta.cur=matrix(phi.sample[s,],ncol=1)
+  nu.cur=nu.sample[s]
+  mu.y=t(Fmtx)%*%beta.cur
+  sapply(1:length(mu.y), function(k){rnorm(1,mu.y[k],sqrt(nu.cur))})
+  
+  
+}  
+
+y.post.pred.sample=sapply(1:n.sample, post.pred.y)
+
+## show the result
+summary.vec95=function(vec){
+  c(unname(quantile(vec,0.025)),mean(vec),unname(quantile(vec,0.975)))
+}
+
+summary.y=apply(y.post.pred.sample,MARGIN=1,summary.vec95)
+
+plot(Y,type='b',xlab='Time',ylab='',ylim=c(0,25),pch=16)
+lines(summary.y[2,],type='b',col='grey',lty=2,pch=4)
+lines(summary.y[1,],type='l',col='purple',lty=3)
+lines(summary.y[3,],type='l',col='purple',lty=3)
+legend("topright",legend=c('Truth','Mean','95% C.I.'),lty=1:3,col=c('black','grey','purple'),
+       horiz = T,pch=c(16,4,NA), cex=0.5)
+```
+
+Using the 5000 samples of $(\boldsymbol{\phi},\nu)$ obtained earlier, we compute 3-step ahead predictions for $y_{101}, y_{102}$ and $y_{103}$ and compare them to the actual observations in the test data. The first three plots are the histograms of the predictions. The fourth plot shows the three test observations $y_{101},y_{102}$ and $y_{103}$ (in black) and the mean predictions (in green) for these three points as well as the corresponding 95% credible intervals. The mean predictions and corresponding 95% credible intervals for $y_{101} = 17,y_{102} = 10$ and $y_{103} = 9$ are also listed below. 
+
+```{r echo=FALSE, fig.asp=0.3, message=FALSE}
+## the prediction function  #sum((c(14.00313, 13.06032, 10.30292)-c(17,10,9))^2)/3; sum((c(14.06364, 12.82521, 10.63417)-c(17,10,9))^2)/3
+#14.00313, 13.06032 and 10.30292
+
+y_pred_h_step=function(h.step,s){
+ phi.cur=matrix(phi.sample[s,],ncol=1)
+ nu.cur=nu.sample[s]
+ y.cur=c(y.dat[100],y.dat[99],y.dat[98])
+ y.pred=rep(0,h.step)
+ for (i in 1:h.step) {
+  mu.y=sum(y.cur*phi.cur)
+  y.new=rnorm(1,mu.y,sqrt(nu.cur))
+  y.pred[i]=y.new
+  y.cur=c(y.new,y.cur)
+  y.cur=y.cur[-length(y.cur)]
+ }
+ return(y.pred)
+}
+set.seed(1)
+y.post.pred.ahead=sapply(1:n.sample, function(s){y_pred_h_step(h.step=3,s=s)})
+summary.vec95=function(vec){
+ c(unname(quantile(vec,0.025)),mean(vec),unname(quantile(vec,0.975)))
+}
+
+predict.summary = apply(y.post.pred.ahead,MARGIN=1,summary.vec95)
+
+par(mfrow=c(1,4))
+hist(y.post.pred.ahead[1,],freq=FALSE,xlab=expression(y[101]),main="")
+lines(density(y.post.pred.ahead[1,]),type='l',col='red')
+hist(y.post.pred.ahead[2,],freq=FALSE,xlab=expression(y[102]),main="")
+lines(density(y.post.pred.ahead[2,]),type='l',col='red')
+hist(y.post.pred.ahead[3,],freq=FALSE,xlab=expression(y[103]),main="")
+lines(density(y.post.pred.ahead[3,]),type='l',col='red')
+plot(1:3,xaxt = "n",y.new,type='b',xlab='Time',ylab='',ylim=c(0,25),pch=16)
+axis(1, at=1:3, labels=c(101,102,103))
+lines(predict.summary[2,],type='b',col='green',lty=2,pch=4)
+lines(predict.summary[1,],type='l',col='purple',lty=3)
+lines(predict.summary[3,],type='l',col='purple',lty=3)
+cat("Predictions for y_{101} (=17), y_{102} (=10) and y_{103} (=9): ",predict.summary[2,],"\n")
+cat("95% credible intervals for y_{101}, y_{102} and y_{103}: ",
+  "(",predict.summary[1,1],",",predict.summary[3,1],")", 
+  "(",predict.summary[1,2],",",predict.summary[3,2],")",
+  "(",predict.summary[1,3],",",predict.summary[3,3],")")
+```
+
+### Mixture of AR Models
+
+A mixture of AR models might be an appropriate fit to the data if the time series can be segmented into homogeneous parts. In order to determine an appropriate number of AR components, we compute the Deviance Information Criterion (DIC) for a mixture of $K$ AR models with $K \in \{2,3,4,5\}$ components, and choose the value of $K$ that gives the smallest DIC value. Each AR component is of order $3$, as chosen earlier. The prior hyperparameters for each component also remain unchanged from our earlier pick: $\boldsymbol{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T$, $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. As with the case of the single AR model, we observe that the posterior distributions of the parameters are relatively insensitive to small changes in the prior hyperparameters. The DIC value for each $K$ is computed by first performing 20000 iterations of Gibbs sampling  to estimate the parameters $\boldsymbol{\omega}_k$, $\boldsymbol{\beta}_k$, $\nu_k$ and $L_t$ (to be defined later) for $k \in \{1,\ldots,K\}$. The DIC values obtained for $K=2,3,4$ and $5$ are, respectively, 558.9859, 561.6269, 535.4260 and 563.0833. Since $K=4$ gives the smallest DIC value, we choose a mixture of $4$ AR models, where each AR model is of order $p=3$ and has prior hyperparameters as specified earlier. The full hierarchical specification of the mixture model is: $y_t \sim \sum_{k=1}^4 \omega_kN(\boldsymbol{f}^T_t\boldsymbol{\beta}_k,\nu_k)$, $\boldsymbol{f}^T_t = \begin{bmatrix} y_{t-1} & y_{t-2} & y_{t-3} \end{bmatrix}$, $t \in \{4,\ldots,100\}$, $\omega_k \sim Dir(a_1,\ldots,a_k)$, $\boldsymbol{\beta}_k \sim N(\boldsymbol{m}_0,\nu_k\boldsymbol{C}_0)$, $\nu_k \sim IG(\frac{n_0}{2}, \frac{d_0}{2})$. In addition to the hyperparameters specified earlier, we set $a_i = 1$ for each $i \in \{1,2,3,4\}$. We also let $L_t$ be the latent variable defined by $L_t = k$ iff $y_t \sim N(\boldsymbol{f}^T_t\boldsymbol{\beta}_k,\nu_k)$. A posterior analysis is carried out using 10000 iterations of Gibbs sampling with a burn-in period of 5000 iterations. We then perform 3-step ahead predictions for $y_{101},y_{102}$ and $y_{103}$ based on estimates for $\omega_k$, $L_t$, $\nu_k$ and $\boldsymbol{\beta}_k$ (where $k \in \{1,2,3,4\}$) obtained by the Gibbs sampling iterations. The results are given below.       
+
+```{r echo=FALSE, fig.asp=0.4}
+library(mvtnorm)
+library(MCMCpack)
+
+#The 3-step ahead predictions for $y_{101} = 17,y_{102} = 10$ and $y_{103} = 9$ are, respectively, 14.06364, 12.82521 and 10.63417.
+model_comp_mix=function(tot_num_comp){
+  
+  ## hyperparameters
+  p=3
+  m0=matrix(rep(0,p),ncol=1) ## p is the order of AR process
+  C0=10*diag(p)
+  C0.inv=0.1*diag(p)
+  n0=0.02
+  d0=0.02
+  K=tot_num_comp ## let the number of mixing component to vary by input
+  a=rep(1,K)
+  
+  Y=matrix(y.dat[(p+1):n.all],ncol=1) ## y_{p+1:T} n.all is the value of T
+  Fmtx=matrix(c(y.dat[p:(n.all-1)],y.dat[(p-1):(n.all-2)],y.dat[(p-2):(n.all-3)]),nrow=3,byrow=TRUE) ## design matrix F
+  n=length(Y)
+  
+  
+  ## The code below is used to obtain posterior samples of model parameters
+  ## Just copy from the last lecture
+  
+  sample_omega=function(L.cur){
+    n.vec=sapply(1:K, function(k){sum(L.cur==k)})
+    rdirichlet(1,a+n.vec)
+  }
+  
+  sample_L_one=function(beta.cur,omega.cur,nu.cur,y.cur,Fmtx.cur){
+    prob_k=function(k){
+      beta.use=beta.cur[((k-1)*p+1):(k*p)]
+      omega.cur[k]*dnorm(y.cur,mean=sum(beta.use*Fmtx.cur),sd=sqrt(nu.cur))
+    }
+    prob.vec=sapply(1:K, prob_k)
+    L.sample=sample(1:K,1,prob=prob.vec/sum(prob.vec))
+    return(L.sample)
+  }
+  
+  sample_L=function(y,x,beta.cur,omega.cur,nu.cur){
+    L.new=sapply(1:n, function(j){sample_L_one(beta.cur,omega.cur,nu.cur,y.cur=y[j,],Fmtx.cur=x[,j])})
+    return(L.new)
+  }
+  
+  sample_nu=function(L.cur,beta.cur){
+    n.star=n0+n+p*K
+    err.y=function(idx){
+      L.use=L.cur[idx]
+      beta.use=beta.cur[((L.use-1)*p+1):(L.use*p)]
+      err=Y[idx,]-sum(Fmtx[,idx]*beta.use)
+      return(err^2)
+    }
+    err.beta=function(k.cur){
+      beta.use=beta.cur[((k.cur-1)*p+1):(k.cur*p)]
+      beta.use.minus.m0=matrix(beta.use,ncol=1)-m0
+      t(beta.use.minus.m0)%*%C0.inv%*%beta.use.minus.m0
+    }
+    
+    d.star=d0+sum(sapply(1:n,err.y))+sum(sapply(1:K,err.beta))
+    1/rgamma(1,shape=n.star/2,rate=d.star/2)
+  }
+  
+  
+  sample_beta=function(k,L.cur,nu.cur){
+    idx.select=(L.cur==k)
+    n.k=sum(idx.select)
+    if(n.k==0){
+      m.k=m0
+      C.k=C0
+    }else{
+      y.tilde.k=Y[idx.select,]
+      Fmtx.tilde.k=Fmtx[,idx.select]
+      e.k=y.tilde.k-t(Fmtx.tilde.k)%*%m0
+      Q.k=t(Fmtx.tilde.k)%*%C0%*%Fmtx.tilde.k+diag(n.k)
+      Q.k.inv=chol2inv(chol(Q.k))
+      A.k=C0%*%Fmtx.tilde.k%*%Q.k.inv
+      m.k=m0+A.k%*%e.k
+      C.k=C0-A.k%*%Q.k%*%t(A.k)
+    }
+    
+    rmvnorm(1,m.k,nu.cur*C.k)
+  }
+  
+  nsim=20000
+  
+  ## store parameters
+  
+  beta.mtx=matrix(0,nrow=p*K,ncol=nsim)
+  L.mtx=matrix(0,nrow=n,ncol=nsim)
+  omega.mtx=matrix(0,nrow=K,ncol=nsim)
+  nu.vec=rep(0,nsim)
+  
+  ## initial value
+  
+  beta.cur=rep(0,p*K)
+  L.cur=rep(1,n)
+  omega.cur=rep(1/K,K)
+  nu.cur=1
+  
+  ## Gibbs Sampler
+  
+  for (i in 1:nsim) {
+    set.seed(i)
+    
+    ## sample omega
+    omega.cur=sample_omega(L.cur)
+    omega.mtx[,i]=omega.cur
+    
+    ## sample L
+    L.cur=sample_L(Y,Fmtx,beta.cur,omega.cur,nu.cur)
+    L.mtx[,i]=L.cur
+    
+    ## sample nu
+    nu.cur=sample_nu(L.cur,beta.cur)
+    nu.vec[i]=nu.cur
+    
+    ## sample beta
+    beta.cur=as.vector(sapply(1:K, function(k){sample_beta(k,L.cur,nu.cur)}))
+    beta.mtx[,i]=beta.cur
+    
+  #  if(i%%1000==0){
+  #    print(i)
+  #  }
+    
+  }
+  
+  ## Now compute DIC for mixture model
+  ## Similar as the calculation of DIC in Module 2
+  
+  cal_log_likelihood_mix_one=function(idx,beta,nu,omega){
+    norm.lik=rep(0,K)
+    for (k.cur in 1:K) {
+      mean.norm=sum(Fmtx[,idx]*beta[((k.cur-1)*p+1):(k.cur*p)])
+      norm.lik[k.cur]=dnorm(Y[idx,1],mean.norm,sqrt(nu),log=FALSE)
+    }
+    log.lik=log(sum(norm.lik*omega))
+    return(log.lik)
+  }
+  
+  cal_log_likelihood_mix=function(beta,nu,omega){
+    sum(sapply(1:n, function(idx){cal_log_likelihood_mix_one(idx=idx,beta=beta,nu=nu,omega=omega)}))
+  }
+  
+  sample.select.idx=seq(10001,20000,by=1)
+  
+  beta.mix=rowMeans(beta.mtx[,sample.select.idx])
+  nu.mix=mean(nu.vec[sample.select.idx])
+  omega.mix=rowMeans(omega.mtx[,sample.select.idx])
+  
+  log.lik.bayes.mix=cal_log_likelihood_mix(beta.mix,nu.mix,omega.mix)
+  
+  post.log.lik.mix=sapply(sample.select.idx, function(k){cal_log_likelihood_mix(beta.mtx[,k],nu.vec[k],omega.mtx[,k])})
+  E.post.log.lik.mix=mean(post.log.lik.mix)
+  
+  p_DIC.mix=2*(log.lik.bayes.mix-E.post.log.lik.mix)
+  
+  DIC.mix=-2*log.lik.bayes.mix+2*p_DIC.mix
+  
+  return(DIC.mix)
+}
+
+## Run this code will give you DIC corresponding to mixture model with 2:5 mixing components
+mix.model.all=sapply(2:5,model_comp_mix)
+
+# 558.9859, 561.6269, 535.4260, 563.0833
+
+
+p=3 ## order of AR process
+K=4 ## number of mixing component
+y.size = length(y.dat)
+Y=matrix(y.dat[(p+1):y.size],ncol=1) ## y_{p+1:T}
+Fmtx=matrix(c(y.dat[p:(y.size-1)],y.dat[(p-1):(y.size-2)], y.dat[(p-2):(y.size-3)]),nrow=3,byrow=TRUE) ## design matrix F
+n=length(Y) ## T-p
+
+## prior hyperparameters
+m0=matrix(rep(0,p),ncol=1)
+C0=10*diag(p)
+C0.inv=0.1*diag(p)
+n0=0.02
+d0=0.02
+a=rep(1,K)
+
+#### sample functions
+
+
+sample_omega=function(L.cur){
+  n.vec=sapply(1:K, function(k){sum(L.cur==k)})
+  rdirichlet(1,a+n.vec)
+}
+
+sample_L_one=function(beta.cur,omega.cur,nu.cur,y.cur,Fmtx.cur){
+  prob_k=function(k){
+    beta.use=beta.cur[((k-1)*p+1):(k*p)]
+    omega.cur[k]*dnorm(y.cur,mean=sum(beta.use*Fmtx.cur),sd=sqrt(nu.cur))
+  }
+  prob.vec=sapply(1:K, prob_k)
+  L.sample=sample(1:K,1,prob=prob.vec/sum(prob.vec))
+  return(L.sample)
+}
+
+sample_L=function(y,x,beta.cur,omega.cur,nu.cur){
+  L.new=sapply(1:n, function(j){sample_L_one(beta.cur,omega.cur,nu.cur,y.cur=y[j,],Fmtx.cur=x[,j])})
+  return(L.new)
+}
+
+sample_nu=function(L.cur,beta.cur){
+  n.star=n0+n
+  err.y=function(idx){
+    L.use=L.cur[idx]
+    beta.use=beta.cur[((L.use-1)*p+1):(L.use*p)]
+    err=Y[idx,]-sum(Fmtx[,idx]*beta.use)
+    return(err^2)
+  }
+  
+  err.beta = function(k.cur) {
+    beta.use = beta.cur[((k.cur-1)*p+1):(k.cur*p)]
+    beta.use.minus.m0 = matrix(beta.use,ncol=1)-m0
+    t(beta.use.minus.m0)%*%C0.inv%*%beta.use.minus.m0
+  } 
+  
+  d.star=d0+sum(sapply(1:n,err.y))+sum(sapply(1:K,err.beta))
+  1/rgamma(1,shape=n.star/2,rate=d.star/2)
+}
+
+sample_beta=function(k,L.cur,nu.cur){
+  idx.select=(L.cur==k)
+  n.k=sum(idx.select)
+  if(n.k==0){
+    m.k=m0
+    C.k=C0
+  }else{
+    y.tilde.k=Y[idx.select,]
+    Fmtx.tilde.k=Fmtx[,idx.select]
+    e.k=y.tilde.k-t(Fmtx.tilde.k)%*%m0
+    Q.k=t(Fmtx.tilde.k)%*%C0%*%Fmtx.tilde.k+diag(n.k)
+    Q.k.inv=chol2inv(chol(Q.k))
+    A.k=C0%*%Fmtx.tilde.k%*%Q.k.inv
+    m.k=m0+A.k%*%e.k
+    C.k=C0-A.k%*%Q.k%*%t(A.k)
+  }
+  
+  rmvnorm(1,m.k,nu.cur*C.k)
+}
+
+#### MCMC setup
+
+## number of iterations
+nsim=10000
+#burn = 5000
+
+## store parameters
+
+beta.mtx=matrix(0,nrow=p*K,ncol=nsim)
+L.mtx=matrix(0,nrow=n,ncol=nsim)
+omega.mtx=matrix(0,nrow=K,ncol=nsim)
+nu.vec=rep(0,nsim)
+
+## initial value
+
+beta.cur=rep(0,p*K)
+L.cur=rep(1,n)
+omega.cur=rep(1/K,K)
+nu.cur=1
+
+
+
+## Gibbs Sampler
+
+for (i in 1:nsim) {
+  set.seed(i)
+  
+  ## sample omega
+  omega.cur=sample_omega(L.cur)
+  omega.mtx[,i]=omega.cur
+  
+  ## sample L
+  L.cur=sample_L(Y,Fmtx,beta.cur,omega.cur,nu.cur)
+  L.mtx[,i]=L.cur # L.mtx[,1]
+  
+  ## sample nu
+  nu.cur=sample_nu(L.cur,beta.cur)
+  nu.vec[i]=nu.cur
+  
+  ## sample beta
+  beta.cur=as.vector(sapply(1:K, function(k){sample_beta(k,L.cur,nu.cur)}))
+  beta.mtx[,i]=beta.cur
+  
+  ## show the number of iterations 
+#  if(i%%1000==0){
+#    print(paste("Number of iterations:",i))
+#  }
+  
+}
+
+#### show the result
+
+sample.select.idx=seq(5001,10000,by=1)
+
+post.pred.y.mix=function(idx){
+  
+  k.vec.use=L.mtx[,idx]
+  beta.use=beta.mtx[,idx]
+  nu.use=nu.vec[idx]
+  
+  
+  get.mean=function(s){
+    k.use=k.vec.use[s]
+    sum(Fmtx[,s]*beta.use[((k.use-1)*p+1):(k.use*p)])
+  }
+  mu.y=sapply(1:n, get.mean)
+  sapply(1:length(mu.y), function(k){rnorm(1,mu.y[k],sqrt(nu.use))})
+  
+}
+
+post.mu.y = function(idx,k) {
+  k.vec.use=L.mtx[,idx]
+  beta.use=beta.mtx[,idx]
+  nu.use=nu.vec[idx]
+  
+  get.mean=function(s){
+    k.use=k.vec.use[s]
+    sum(Fmtx[,s]*beta.use[((k.use-1)*p+1):(k.use*p)])
+  }
+  
+  sapply(k:k, get.mean)
+}
+
+post.mu.y_last = post.mu.y(nsim,n)
+
+y.post.pred.sample=sapply(sample.select.idx, post.pred.y.mix)
+
+#y.post.pred.sample[nsim]
+
+summary.vec95=function(vec){
+  c(unname(quantile(vec,0.025)),mean(vec),unname(quantile(vec,0.975)))
+}
+
+summary.y=apply(y.post.pred.sample,MARGIN=1,summary.vec95)   
+```
+
+```{r echo=FALSE, fig.asp=0.4, message=FALSE}
+
+par(mfrow=c(1,2))
+plot(Y,type='b',xlab='Time',ylab='',pch=16, ylim=c(0,25))
+lines(summary.y[2,],type='b',col='grey',lty=2,pch=4)
+lines(summary.y[1,],type='l',col='purple',lty=3)
+lines(summary.y[3,],type='l',col='purple',lty=3)
+legend("topright",legend=c('Truth','Mean','95% C.I.'),lty=1:3,
+       col=c('black','grey','purple'),horiz = T,pch=c(16,4,NA), cex=0.5)
+
+## the prediction function for mixture model
+
+y_pred_mix_h_step=function(h.step,s){
+  omega.vec.use = omega.mtx[,s] # omega.mtx[,100] sum(is.na(omega.mtx))
+  beta.use = beta.mtx[,s] # beta.mtx[,9997] sum(is.na(beta.mtx))
+  nu.use = nu.vec[s] # str(nu.vec) sum(is.na(nu.vec)) nu.vec[9997] nu.vec[nu.vec == 0]
+ y.cur=c(y.dat[100],y.dat[99],y.dat[98]) # t(c(y.dat[100],y.dat[99],y.dat[98]))%*%matrix(c(1,2,3))
+ y.pred=rep(0,h.step)
+ for (i in 1:h.step) {
+  k.use = sample(1:K,1,prob=omega.vec.use)  # sample(1:K,1,prob=omega.mtx[,9902])
+  beta.cat = beta.use[((k.use-1)*p+1):(k.use*p)] 
+  # sum(c(y.dat[100],y.dat[99],y.dat[98])*beta.mtx[,9902][1:3])
+  mu.y= sum(y.cur*beta.cat) # 
+  y.new=rnorm(1,mu.y,sqrt(nu.use)) # rnorm(1,sum(c(y.dat[100],y.dat[99],y.dat[98])*beta.mtx[,9902][1:3]),sqrt(nu.vec[9902]))
+  y.pred[i]=y.new
+  y.cur=c(y.new,y.cur)
+  y.cur=y.cur[-length(y.cur)]
+ }
+ return(y.pred)
+}
+#y.post.pred.mix.ahead[4901:5000]
+set.seed(1)
+y.post.pred.mix.ahead=sapply(5001:10000, function(s){y_pred_mix_h_step(h.step=3,s=s)})
+summary.vec95=function(vec){
+ c(unname(quantile(vec,0.025,na.rm=TRUE)),mean(vec, na.rm=TRUE),unname(quantile(vec,0.975,na.rm=TRUE)))
+}
+
+predict.mix.summary = apply(y.post.pred.mix.ahead,MARGIN=1,summary.vec95)
+
+plot(1:3,xaxt = "n",y.new,type='b',xlab='Time',ylab='',ylim=c(-75,75),pch=16)
+axis(1, at=1:3, labels=c(101,102,103))
+lines(predict.mix.summary[2,],type='b',col='green',lty=2,pch=4)
+lines(predict.mix.summary[1,],type='l',col='purple',lty=3)
+lines(predict.mix.summary[3,],type='l',col='purple',lty=3)
+cat("Predictions for y_{101} (=17), y_{102} (=10) and y_{103} (=9): ",predict.mix.summary[2,],"\n")
+cat("95% credible intervals for y_{101}, y_{102} and y_{103}: ",
+  "(",predict.mix.summary[1,1],",",predict.mix.summary[3,1],")", 
+  "(",predict.mix.summary[1,2],",",predict.mix.summary[3,2],")",
+  "(",predict.mix.summary[1,3],",",predict.mix.summary[3,3],")")
+```
+
+### Model Comparison
+
+We determined earlier that a mixture of $4$ AR models with prior hyperparameters $\boldsymbol{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T$, $C_0 = 10I_3$, $n_0 = d_0 = 0.02$ and $a_1 = a_2 = a_3 = a_4 = 1$ has DIC value 535.4260. In order to compare the performance of the single AR model with the mixture AR model, we compute the DIC value for a single AR model of order 3, choosing the same prior hyperparameters used for each component in the mixture model. This is done by drawing 5000 posterior samples of $(\boldsymbol{\phi},\nu)$ and using these samples to estimate the log likelihood function of $(y_4,y_5,\ldots,y_{100})$.  The DIC value obtained is 556.9009, which suggests that a mixture of 4 AR models fits the data better than a single AR model. Moreover, one may note that the 3-step ahead predictions of $y_{101},y_{102}$ and $y_{103}$ for the mixture of 4 AR models are somewhat more accurate than those of the single AR model: the mean-squared error for the mixture of 4 AR models is 6.424844, whereas that for the single AR model is 6.681463.  
+
+```{r echo=FALSE}
+n.sample=5000
+
+nu.sample=rep(0,n.sample)
+phi.sample=matrix(0,nrow=n.sample,ncol=p)
+
+for (i in 1:n.sample) {
+  set.seed(i)
+  nu.new=1/rgamma(1,shape=n.star/2,rate=d.star/2)
+  nu.sample[i]=nu.new
+  phi.new=rmvnorm(1,mean=m,sigma=nu.new*C)
+  phi.sample[i,]=phi.new
+}
+
+cal_log_likelihood=function(phi,nu){
+  mu.y=t(Fmtx)%*%phi
+  log.lik=sapply(1:length(mu.y), function(k){dnorm(Y[k,1],mu.y[k],sqrt(nu),log=TRUE)})
+  sum(log.lik)
+}
+
+
+phi.bayes=colMeans(phi.sample)
+nu.bayes=mean(nu.sample)
+
+
+log.lik.bayes=cal_log_likelihood(phi.bayes,nu.bayes)
+
+post.log.lik=sapply(1:5000, function(k){cal_log_likelihood(phi.sample[k,],nu.sample[k])})
+E.post.log.lik=mean(post.log.lik)
+
+
+p_DIC=2*(log.lik.bayes-E.post.log.lik)
+
+DIC=-2*log.lik.bayes+2*p_DIC
+
+#(d.star/2)/(n.star/2 - 1)
+```
+
+
+### Conclusions
+
+Based on the computed DIC values, it would seem that a mixture of 4 AR models, each of order 3, would be preferred over a single AR model of order 3. Indeed, a mixture model might make sense in the context of the data since the frequency-magnitude distribution of earthquakes possibly varies across different regions of the world. In addition, as was mentioned in the Data section, some graphical features of the time series seem to imply non-(weak)stationarity, so that a single AR model might not be appropriate. For example, if all 103 observations are split into 3 segments, one segment containing the first 34 observations, another containing the next 34 observations, and the third containing the last 35 observations, the mean values of the 3 segments are, respectively, 11.5, 12.08824 and 14.6. One may also test for stationarity using the augmented Dicker-Fuller test. This test can be carried out using the adf.test() function of the tseries library in R.  
+
+```{r echo=FALSE, fig.asp=0.4}
+library(tseries)
+y = c(y.dat, y.new)
+mean.1 = mean(y[1:34])
+mean.2 = mean(y[35:68])
+mean.3 = mean(y[69:103])
+cat("Mean of first 34 observations: ", mean.1,"\n")
+cat("Mean of next 34 observations: ", mean.2, "\n")
+cat("Mean of last 35 observations: ", mean.3, "\n")
+adf.test(y) 
+```
+
+The p-value obtained from the test is 0.05076, which is greater than 0.05, so at the 95% confidence level the null hypothesis not rejected, implying that the time series is not weakly stationary.  One limitation of the model is that the variance $\nu_k$ of each $y_t$ is assumed to have the same distribution. One might ask whether creating another level in the hierarchical model, where the scale and rate parameters themselves follow particular distributions, would result in a model that better fits the data. Another weakness of the mixture model seems to be the greater uncertainty in the 3-step ahead predictions of $y_{101}$, $y_{102}$ and $y_{103}$, particularly for $y_{103}$, compared to the predictions in the  single AR model, as indicated by the much larger 95% credible intervals corresponding to these predictions in the mixture model. Furthermore, it is possible that the mixture of 4 AR models is overfitting the data. The predictive capabilities of the models might be more accurately assessed on a larger test dataset, say at least half the size of the training data.  
