@@ -77,52 +77,50 @@ smallest BIC value is 259.1044, attained at $p=3$. Since the AIC value
 of 251.7765 at $p=3$ is rather close to the minimum AIC value, we choose
 $p=3$ as the order of our AR model. The full hierarchical specification
 of the AR(3) model is as follows:
-$\mathbf{y} \sim N(\mathbf{F}^T \mathbf{\phi}, \nu \mathbf{I}_n),~ \mathbf{\phi} \sim N(\mathbf{m}_0,\nu \mathbf{C}_0),~ \nu \sim IG\left(\frac{n_0}{2},\frac{d_0}{2}\right)$.
-Here the response vector $\mathbf{y}$ is
+$y \sim N(F^T {\phi}, \nu {I}_n),~ {\phi} \sim N({m}_0,\nu {C}_0),~ \nu \sim IG\left(\frac{n_0}{2},\frac{d_0}{2}\right)$.
+Here the response vector ${y}$ is
 $$\begin{bmatrix} y_4 & y_5 & \cdots & y_{100}\end{bmatrix}^T,$$
-$n = 97$, $\mathbf{y} \in \mathbb{R}^n$,
+$n = 97$, ${y} \in \mathbb{R}^n$,
 $$ F=\begin{bmatrix}  o_3 & \cdots & o_{99} \\ o_2 & \cdots & o_{98} \\ o_1 & \cdots & o_{97} \end{bmatrix}, $$
 where the 100 observations are $o_1,\ldots,o_{100}$. Furthermore, we
 choose the hyperparameters
-$$\mathbf{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$
-$C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. To see that the posterior
-distributions of $\mathbf{\phi}$ and $\nu$ are quite robust to small
-changes in the hyperparameters, we calculate the posterior mean estimate
-of $\phi$ for 3 different sets of hyperparameters: (1)
-$$\mathbf{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$
-$C_0 = 10I_3$ and $n_0 = d_0 = 0.02$; (2)
-$$\mathbf{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$
-$C_0 = 5I_3$ and $n_0 = 0.1$, $d_0 = 0.2$; (3)
-$$\mathbf{m}_0 = \begin{bmatrix} 1 & 1 & 1 \end{bmatrix}^T,$$
-$C_0 = 2I_3$ and $n_0 = 0.1$, $d_0 = 0.2$.
+$${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 10I_3$ and
+$n_0 = d_0 = 0.02$. To see that the posterior distributions of ${\phi}$
+and $\nu$ are quite robust to small changes in the hyperparameters, we
+calculate the posterior mean estimate of $\phi$ for 3 different sets of
+hyperparameters: (1)
+$${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 10I_3$ and
+$n_0 = d_0 = 0.02$; (2)
+$${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 5I_3$ and
+$n_0 = 0.1$, $d_0 = 0.2$; (3)
+$${m}_0 = \begin{bmatrix} 1 & 1 & 1 \end{bmatrix}^T,$$ $C_0 = 2I_3$ and
+$n_0 = 0.1$, $d_0 = 0.2$.
 
 The posterior mean estimates of
-$$\mathbf{\phi} = \begin{bmatrix} \phi_1 & \phi_2 & \phi_3\end{bmatrix}^T$$
-and $\nu$ for the 3 parameter sets are: (1)
-$$\mathbf{\phi} = \begin{bmatrix} 0.3332798 &  0.2059251 & 0.4428161\end{bmatrix}^T,$$
+$${\phi} = \begin{bmatrix} \phi_1 & \phi_2 & \phi_3\end{bmatrix}^T$$ and
+$\nu$ for the 3 parameter sets are: (1)
+$${\phi} = \begin{bmatrix} 0.3332798 &  0.2059251 & 0.4428161\end{bmatrix}^T,$$
 $\nu = 17.14287$; (2)
-$$\mathbf{\phi} = \begin{bmatrix} 0.3332784 & 0.2059347 & 0.4428060\end{bmatrix}^T,$$
+$${\phi} = \begin{bmatrix} 0.3332784 & 0.2059347 & 0.4428060\end{bmatrix}^T,$$
 $\nu = 17.14536$; (3)
-$$\mathbf{\phi} = \begin{bmatrix} 0.3332819 & 0.2059726 & 0.4427885\end{bmatrix}^T,$$
-$\nu = 17.15202$. Hence the posterior distributions of $\mathbf{\phi}$
-and $\nu$ are quite robust with respect to the choice of
-hyperparameters.
+$${\phi} = \begin{bmatrix} 0.3332819 & 0.2059726 & 0.4427885\end{bmatrix}^T,$$
+$\nu = 17.15202$. Hence the posterior distributions of ${\phi}$ and
+$\nu$ are quite robust with respect to the choice of hyperparameters.
 
 Next, we draw 5000 samples of $(\phi_1,\phi_2,\phi_3,\nu)$ from their
 marginal posterior distributions and plot them. As discussed earlier, we
 will use the hyperparameters
-$$ \mathbf{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$
-$C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. For each sample
-$(\mathbf{\phi},\nu)$ drawn, we compute
-$\mathbf{\mu} = F^T\mathbf{\phi}$ as an estimate for the mean of
-$\mathbf{y}$, and for each $i \in \{4,\ldots,100\}$, we draw a sample of
-$y_i$ from the distribution $N(\mathbf{\mu}[i-3], \nu)$. For each $i$,
-we take the mean of all $y_i$’s so obtained over the 5000 samples. The
-95% credible interval for each point $y_i$ is also computed.
+$$ {m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 10I_3$
+and $n_0 = d_0 = 0.02$. For each sample $({\phi},\nu)$ drawn, we compute
+${\mu} = F^T{\phi}$ as an estimate for the mean of ${y}$, and for each
+$i \in \{4,\ldots,100\}$, we draw a sample of $y_i$ from the
+distribution $N({\mu}[i-3], \nu)$. For each $i$, we take the mean of all
+$y_i$’s so obtained over the 5000 samples. The 95% credible interval for
+each point $y_i$ is also computed.
 
-Using the 5000 samples of $(\mathbf{\phi},\nu)$ obtained earlier, we
-compute 3-step ahead predictions for $y_{101}, y_{102}$ and $y_{103}$
-and compare them to the actual observations in the test data. The first
+Using the 5000 samples of $({\phi},\nu)$ obtained earlier, we compute
+3-step ahead predictions for $y_{101}, y_{102}$ and $y_{103}$ and
+compare them to the actual observations in the test data. The first
 three plots are the histograms of the predictions. The fourth plot shows
 the three test observations $y_{101},y_{102}$ and $y_{103}$ (in black)
 and the mean predictions (in green) for these three points as well as
@@ -140,53 +138,50 @@ $K \in \{2,3,4,5\}$ components, and choose the value of $K$ that gives
 the smallest DIC value. Each AR component is of order $3$, as chosen
 earlier. The prior hyperparameters for each component also remain
 unchanged from our earlier pick:
-$$ \mathbf{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T, $$
-$C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. As with the case of the single AR
-model, we observe that the posterior distributions of the parameters are
+$$ {m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T, $$ $C_0 = 10I_3$
+and $n_0 = d_0 = 0.02$. As with the case of the single AR model, we
+observe that the posterior distributions of the parameters are
 relatively insensitive to small changes in the prior hyperparameters.
 The DIC value for each $K$ is computed by first performing 20000
-iterations of Gibbs sampling to estimate the parameters
-$\mathbf{\omega}_k$, $\mathbf{\beta}_k$, $\nu_k$ and $L_t$ (to be
-defined later) for $k \in \{1,\ldots,K\}$. The DIC values obtained for
-$K=2,3,4$ and $5$ are, respectively, 558.9859, 561.6269, 535.4260 and
-563.0833. Since $K=4$ gives the smallest DIC value, we choose a mixture
-of $4$ AR models, where each AR model is of order $p=3$ and has prior
+iterations of Gibbs sampling to estimate the parameters ${\omega}_k$,
+${\beta}_k$, $\nu_k$ and $L_t$ (to be defined later) for
+$k \in \{1,\ldots,K\}$. The DIC values obtained for $K=2,3,4$ and $5$
+are, respectively, 558.9859, 561.6269, 535.4260 and 563.0833. Since
+$K=4$ gives the smallest DIC value, we choose a mixture of $4$ AR
+models, where each AR model is of order $p=3$ and has prior
 hyperparameters as specified earlier. The full hierarchical
 specification of the mixture model is:
-$y_t \sim \sum_{k=1}^4 \omega_kN(\mathbf{f}^T_t\mathbf{\beta}_k,\nu_k)$,
-$$ \mathbf{f}^T_t = \begin{bmatrix} y_{t-1} & y_{t-2} & y_{t-3} \end{bmatrix}, $$
+$y_t \sim \sum_{k=1}^4 \omega_kN({f}^T_t{\beta}_k,\nu_k)$,
+$$ {f}^T_t = \begin{bmatrix} y_{t-1} & y_{t-2} & y_{t-3} \end{bmatrix}, $$
 $t \in \{4,\ldots,100\}$, $\omega_k \sim Dir(a_1,\ldots,a_k)$,
-$\mathbf{\beta}_k \sim N(\mathbf{m}_0,\nu_k\mathbf{C}_0)$,
+${\beta}_k \sim N({m}_0,\nu_k{C}_0)$,
 $\nu_k \sim IG(\frac{n_0}{2}, \frac{d_0}{2})$. In addition to the
 hyperparameters specified earlier, we set $a_i = 1$ for each
 $i \in \{1,2,3,4\}$. We also let $L_t$ be the latent variable defined by
-$L_t = k$ iff $y_t \sim N(\mathbf{f}^T_t\mathbf{\beta}_k,\nu_k)$. A
-posterior analysis is carried out using 10000 iterations of Gibbs
-sampling with a burn-in period of 5000 iterations. We then perform
-3-step ahead predictions for $y_{101},y_{102}$ and $y_{103}$ based on
-estimates for $\omega_k$, $L_t$, $\nu_k$ and $\mathbf{\beta}_k$ (where
-$k \in \{1,2,3,4\}$) obtained by the Gibbs sampling iterations. The
-results are given below.
+$L_t = k$ iff $y_t \sim N({f}^T_t{\beta}_k,\nu_k)$. A posterior analysis
+is carried out using 10000 iterations of Gibbs sampling with a burn-in
+period of 5000 iterations. We then perform 3-step ahead predictions for
+$y_{101},y_{102}$ and $y_{103}$ based on estimates for $\omega_k$,
+$L_t$, $\nu_k$ and ${\beta}_k$ (where $k \in \{1,2,3,4\}$) obtained by
+the Gibbs sampling iterations. The results are given below.
 
 ### Model Comparison
 
 We determined earlier that a mixture of $4$ AR models with prior
-hyperparameters
-$$\mathbf{m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$
+hyperparameters $${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$
 $C_0 = 10I_3$, $n_0 = d_0 = 0.02$ and $a_1 = a_2 = a_3 = a_4 = 1$ has
 DIC value 535.4260. In order to compare the performance of the single AR
 model with the mixture AR model, we compute the DIC value for a single
 AR model of order 3, choosing the same prior hyperparameters used for
 each component in the mixture model. This is done by drawing 5000
-posterior samples of $(\mathbf{\phi},\nu)$ and using these samples to
-estimate the log likelihood function of $(y_4,y_5,\ldots,y_{100})$. The
-DIC value obtained is 556.9009, which suggests that a mixture of 4 AR
-models fits the data better than a single AR model. Moreover, one may
-note that the 3-step ahead predictions of $y_{101},y_{102}$ and
-$y_{103}$ for the mixture of 4 AR models are somewhat more accurate than
-those of the single AR model: the mean-squared error for the mixture of
-4 AR models is 6.424844, whereas that for the single AR model is
-6.681463.
+posterior samples of $({\phi},\nu)$ and using these samples to estimate
+the log likelihood function of $(y_4,y_5,\ldots,y_{100})$. The DIC value
+obtained is 556.9009, which suggests that a mixture of 4 AR models fits
+the data better than a single AR model. Moreover, one may note that the
+3-step ahead predictions of $y_{101},y_{102}$ and $y_{103}$ for the
+mixture of 4 AR models are somewhat more accurate than those of the
+single AR model: the mean-squared error for the mixture of 4 AR models
+is 6.424844, whereas that for the single AR model is 6.681463.
 
 ### Conclusions
 
