@@ -76,8 +76,8 @@ The smallest AIC value is 251.4111, attained at $p=4$, while the
 smallest BIC value is 259.1044, attained at $p=3$. Since the AIC value
 of 251.7765 at $p=3$ is rather close to the minimum AIC value, we choose
 $p=3$ as the order of our AR model. The full hierarchical specification
-of the AR(3) model is as follows: $y \sim N(F^T {\phi}$,
-$\nu {I}_n),~ {\phi} \sim N({m}_0,\nu {C}_0),$
+of the AR(3) model is as follows: $y \sim N(F^T {\phi},\nu {I}_n),$
+$~{\phi} \sim N({m}_0,\nu {C}_0),$
 $~\nu \sim IG\left(\frac{n_0}{2},\frac{d_0}{2}\right)$. Here the
 response vector ${y}$ is
 $$\begin{bmatrix} y_4 & y_5 & \cdots & y_{100}\end{bmatrix}^T,$$
