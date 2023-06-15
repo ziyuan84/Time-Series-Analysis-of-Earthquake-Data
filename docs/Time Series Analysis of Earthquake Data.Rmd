@@ -98,8 +98,35 @@ plot(p,criteria[1,],type='p',pch='a',col='red',xlab='AR order p',ylab='Criterion
 points(p,criteria[2,],pch='b',col='blue')
 ```
 
-The smallest AIC value is 251.4111, attained at $p=4$, while the smallest BIC value is 259.1044, attained at $p=3$. Since the AIC value of 251.7765 at $p=3$ is rather close to the minimum AIC value, we choose $p=3$ as the order of our AR model. The full hierarchical specification of the AR(3) model is as follows: $y \sim N(F^T {\phi},\nu {I}_n),$ $~{\phi} \sim N({m}_0,\nu {C}_0),$ $~\nu \sim IG\left(\frac{n_0}{2},\frac{d_0}{2}\right)$. Here the response vector ${y}$ is $$\begin{bmatrix} y_4 & y_5 & \cdots & y_{100}\end{bmatrix}^T,$$ $n = 97$, ${y} \in \mathbb{R}^n$, 
-$$ F=\begin{bmatrix}  o_3 & \cdots & o_{99} \\ o_2 & \cdots & o_{98} \\ o_1 & \cdots & o_{97} \end{bmatrix}, $$ where the 100 observations are $o_1,\ldots,o_{100}$. Furthermore, we choose  the hyperparameters $${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$. To see that the posterior distributions of ${\phi}$ and $\nu$ are quite robust to small changes in the hyperparameters, we calculate the posterior mean estimate of $\phi$ for 3 different sets of hyperparameters: (1) $${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$; (2) $${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 5I_3$ and $n_0 = 0.1$, $d_0 = 0.2$; (3) $${m}_0 = \begin{bmatrix} 1 & 1 & 1 \end{bmatrix}^T,$$ $C_0 = 2I_3$ and $n_0 = 0.1$, $d_0 = 0.2$.   
+The smallest AIC value is 251.4111, attained at $p=4$, while the smallest BIC value is 259.1044, attained at $p=3$. Since the AIC value of 251.7765 at $p=3$ is rather close to the minimum AIC value, we choose $p=3$ as the order of our AR model. The full hierarchical specification of the AR(3) model is as follows: 
+
+$$y \sim N(F^T {\phi},\nu {I}_n),$$ 
+
+$$~{\phi} \sim N({m}_0,\nu {C}_0),$$ 
+
+$$~\nu \sim IG\left(\frac{n_0}{2},\frac{d_0}{2}\right).$$ 
+
+Here the response vector ${y}$ is 
+
+$$\begin{bmatrix} y_4 & y_5 & \cdots & y_{100}\end{bmatrix}^T,$$ 
+
+$n = 97$, ${y} \in \mathbb{R}^n$,
+
+$$F=\begin{bmatrix}  o_3 & \cdots & o_{99} \\ 
+o_2 & \cdots & o_{98} \\ 
+o_1 & \cdots & o_{97} \end{bmatrix},$$ 
+
+where the 100 observations are $o_1,\ldots,o_{100}$. Furthermore, we choose  the hyperparameters 
+
+$${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ 
+
+$$C_0 = 10I_3$$ 
+
+and 
+
+$$n_0 = d_0 = 0.02$$. 
+
+To see that the posterior distributions of ${\phi}$ and $\nu$ are quite robust to small changes in the hyperparameters, we calculate the posterior mean estimate of $\phi$ for 3 different sets of hyperparameters: (1) $${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 10I_3$ and $n_0 = d_0 = 0.02$; (2) $${m}_0 = \begin{bmatrix} 0 & 0 & 0 \end{bmatrix}^T,$$ $C_0 = 5I_3$ and $n_0 = 0.1$, $d_0 = 0.2$; (3) $${m}_0 = \begin{bmatrix} 1 & 1 & 1 \end{bmatrix}^T,$$ $C_0 = 2I_3$ and $n_0 = 0.1$, $d_0 = 0.2$.   
 
 ```{r message=FALSE, echo=FALSE}
 library(colorRamps)
