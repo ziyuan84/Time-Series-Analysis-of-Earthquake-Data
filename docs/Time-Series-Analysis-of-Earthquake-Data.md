@@ -184,6 +184,10 @@ distribution $N({\mu}[i-3], \nu)$. For each $i$, we take the mean of all
 $y_i$’s so obtained over the 5000 samples. The 95% credible interval for
 each point $y_i$ is also computed.
 
+![](Time-Series-Analysis-of-Earthquake-Data_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+![](Time-Series-Analysis-of-Earthquake-Data_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
 Using the 5000 samples of $({\phi},\nu)$ obtained earlier, we compute
 3-step ahead predictions for $y_{101}, y_{102}$ and $y_{103}$ and
 compare them to the actual observations in the test data. The first
@@ -193,6 +197,12 @@ and the mean predictions (in green) for these three points as well as
 the corresponding 95% credible intervals. The mean predictions and
 corresponding 95% credible intervals for $y_{101} = 17,y_{102} = 10$ and
 $y_{103} = 9$ are also listed below.
+
+![](Time-Series-Analysis-of-Earthquake-Data_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+    ## Predictions for y_{101} (=17), y_{102} (=10) and y_{103} (=9):  14.00313 13.06032 10.30292
+
+    ## 95% credible intervals for y_{101}, y_{102} and y_{103}:  ( 5.491587 , 22.36294 ) ( 4.199215 , 21.69724 ) ( 0.9094634 , 19.51553 )
 
 ### Mixture of AR Models
 
@@ -248,6 +258,12 @@ sampling with a burn-in period of 5000 iterations. We then perform
 estimates for $\omega_k$, $L_t$, $\nu_k$ and ${\beta}_k$ (where
 $k \in \{1,2,3,4\}$) obtained by the Gibbs sampling iterations. The
 results are given below.
+
+![](Time-Series-Analysis-of-Earthquake-Data_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+    ## Predictions for y_{101} (=17), y_{102} (=10) and y_{103} (=9):  14.06364 12.82521 10.63417
+
+    ## 95% credible intervals for y_{101}, y_{102} and y_{103}:  ( 4.101474 , 24.96812 ) ( -6.782039 , 26.95767 ) ( -53.94688 , 70.19039 )
 
 ### Model Comparison
 
